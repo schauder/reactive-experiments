@@ -18,8 +18,6 @@ package de.schauderhaft;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.reactivestreams.Subscriber;
-
 import lombok.Data;
 import reactor.core.publisher.Flux;
 
@@ -64,23 +62,13 @@ public class PrimeFactors {
 	}
 
 	public static Flux<Integer> factors(int input) {
-		return new Flux<Integer>() {
-			@Override
-			public void subscribe(Subscriber<? super Integer> s) {
-				int oldState = 0;
-				int state = input;
-
-				while (oldState != state) {
-					if (state <= 1) break;
-					Pair<Integer, Integer> next = nextFactor(state);
-					s.onNext(next.left);
-					oldState = state;
-					state = next.right;
-				}
-
-				s.onComplete();
-			}
-		};
+		return Flux.generate(() -> input, (state, sink) -> {
+			Pair<Integer, Integer> p = nextFactor(state);
+			if (p.left <= 1) sink.complete();
+			else
+				sink.next(p.left);
+			return p.right;
+		});
 	}
 
 	@Data
