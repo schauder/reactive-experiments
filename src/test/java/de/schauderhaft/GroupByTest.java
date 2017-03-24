@@ -114,7 +114,7 @@ public class GroupByTest {
 						l.get(1)
 				))
 				.windowUntil(tup -> tup.getT1())
-				.map(gf -> gf.map(tup -> tup.getT2()));
+				.flatMap(gf -> gf.map(tup -> tup.getT2()).groupBy(t -> keyFunction.apply(t)));
 
 		return null;
 	}
