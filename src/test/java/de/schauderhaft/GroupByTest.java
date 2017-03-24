@@ -23,7 +23,6 @@ import org.junit.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
 import reactor.test.StepVerifier;
-import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 /**
@@ -107,16 +106,16 @@ public class GroupByTest {
 	private static <T, X> Flux<GroupedFlux<X, T>> groupOnSwitch(Flux<T> source, Function<T, X> keyFunction) {
 
 		//Flux<T> doubledFirst = source.compose(s -> source.take(1).flatMap(v -> Flux.just(v, v)).concatWith(source));
-		Flux<GroupedFlux<X, Tuple3<Boolean, X, T>>> value = source
+		Flux<Flux<T>> value = source
 				.buffer(2, 1)
 				.filter(l -> l.size() == 2)
 				.map(l -> Tuples.of(
 						!keyFunction.apply(l.get(1)).equals(keyFunction.apply(l.get(0))),
-						keyFunction.apply(l.get(1)),
 						l.get(1)
 				))
-				.windowUntil(t -> t.getT1())
-				.flatMap(gf -> gf.groupBy(t -> gf.key().getT2()));
+				.windowUntil(tup -> tup.getT1())
+				.map(gf -> gf.map(tup -> tup.getT2()));
+
 		return null;
 	}
 }
