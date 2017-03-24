@@ -13,27 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.schauderhaft;
+package de.schauderhaft.blocking;
 
-import static de.schauderhaft.Result.*;
-
-import java.time.Duration;
-import java.util.Random;
-
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
+import lombok.Data;
 
 /**
  * @author Jens Schauder
  */
-public class BlockingSimulator {
-
-
-	public static void main(String[] args) {
-		Random random = new Random(0);
-		Flux<Integer> events = Flux.generate(s -> s.next(random.nextInt()));
-		Flux<Result> results = events.flatMap(l -> PrimeFactors.factors(l).map(f -> new Result(l, String.format("result<%s>", f))).concatWith(Mono.just(finalResult(l))));
-
-		results.doOnNext(System.out::println).blockLast(Duration.ofSeconds(10));
-	}
+@Data
+public class Statistik {
+	final int simpleCount;
+	final int dbCount;
+	final int totalSimpleDuration;
+	final int totalDbDuration;
 }

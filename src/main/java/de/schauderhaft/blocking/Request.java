@@ -13,7 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.schauderhaft;
+package de.schauderhaft.blocking;
+
+import static de.schauderhaft.blocking.Request.Type.*;
+import static java.lang.Math.abs;
+
+import java.time.LocalDateTime;
 
 import lombok.Data;
 
@@ -21,25 +26,22 @@ import lombok.Data;
  * @author Jens Schauder
  */
 @Data
-public class Result {
+class Request {
 
-	private final int requestId;
-	private final String value;
-	private final boolean finalResult;
+	final int id;
+	private final LocalDateTime start = LocalDateTime.now();
 
-	static Result finalResult(int requestId) {
-		return new Result(requestId);
+	Request(Integer id) {
+		this.id = id;
 	}
 
-	Result(int requestId) {
-		this.requestId = requestId;
-		value = "N.A.";
-		finalResult = true;
-	}
+	Type type(){
+		return abs(id) % 100 < 2 ? DB : COMPUTATIONAL;
 
-	Result(int requestId, String value) {
-		this.requestId = requestId;
-		this.value = value;
-		finalResult = false;
+
+	}
+	enum Type {
+		COMPUTATIONAL,
+		DB
 	}
 }
