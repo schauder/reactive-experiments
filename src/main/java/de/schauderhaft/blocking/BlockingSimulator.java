@@ -53,19 +53,19 @@ public class BlockingSimulator {
 				results,
 				r -> r.timeSlot()).filter(gf -> gf.key() != null);
 
-//		Flux<GroupedFlux<Tuple2<Long, Type>, Result>> groupedByTimeSlotAndType = groupedByTimeSlot
-//				.flatMap(gf -> gf.groupBy(r -> Tuples.of(gf.key().timeSlot(), r.getRequest().type())));
-//
-//		groupedByTimeSlotAndType
-//				.flatMap(gf -> gf.count().map(c -> gf.key().toString() + c))
-//				.doOnNext(System.out::println)
-//				.blockLast(Duration.ofSeconds(11));
+		Flux<GroupedFlux<Tuple2<Long, Type>, Result>> groupedByTimeSlotAndType = groupedByTimeSlot
+				.flatMap(gf -> gf.groupBy(r -> Tuples.of(gf.key().timeSlot(), r.getRequest().type())));
+
+		groupedByTimeSlotAndType
+				.flatMap(gf -> gf.count().map(c -> Tuples.of(gf.key().getT1(), gf.key().getT2(), c)))
+				.doOnNext(System.out::println)
+				.blockLast(Duration.ofSeconds(11));
 	}
 
 	private static Publisher<Result> simpleDbCall(Request r) {
 		// doesn't consume resources, but takes some time, emitting a single result
 		Random random = new Random();
-		return Mono.just(Result.finalResult(r, String.format("dbResult<%s>", r.id))).delayElementMillis((int) (random.nextGaussian() * 50.0 + 300));
+		return Mono.just("").delayElementMillis((int) (random.nextGaussian() * 50.0 + 300)).map(x -> Result.finalResult(r, String.format("dbResult<%s>", r.id)));
 	}
 
 	private static Flux<Result> simpleComputation(Request r) {
