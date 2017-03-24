@@ -16,13 +16,13 @@
 package de.schauderhaft;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.function.Function;
 
 import org.junit.Test;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
-import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 import reactor.util.function.Tuples;
 
@@ -69,17 +69,27 @@ public class GroupByTest {
 	public void groupOnSwitch() {
 		StepVerifier
 				.create(
-						groupOnSwitch(
-								Flux.just("one", "two", "twenty", "tissue", "berta", "blot", "thousand"),
-								s -> s.substring(0, 1))
-								.flatMap(Flux::materialize)
-								.map(s -> s.isOnComplete() ? "WINDOW CLOSED" : s.get())
+						wordsByInitial()
 				)
-//				.expectNext("one", "WINDOW CLOSED")// the first element gets swollowed, and I don't know how to fix that.
+				.expectNext("one", "WINDOW CLOSED")// the first element gets swollowed, and I don't know how to fix that.
 				.expectNext("two", "twenty", "tissue", "WINDOW CLOSED")
 				.expectNext("berta", "blot", "WINDOW CLOSED")
 				.expectNext("thousand", "WINDOW CLOSED")
 				.verifyComplete();
+	}
+
+	@Test
+	public void groupOnSwitchDebug(){
+		wordsByInitial().blockLast();
+	}
+
+	private static Flux<String> wordsByInitial() {
+		return groupOnSwitch(
+				Flux.just("one", "two", "twenty", "tissue", "berta", "blot", "thousand"),
+				s -> s.substring(0, 1))
+				.flatMap(Flux::materialize)
+				.doOnNext(System.out::println)
+				.map(s -> s.isOnComplete() ? "WINDOW CLOSED" : s.get());
 	}
 
 	@Test
@@ -100,24 +110,35 @@ public class GroupByTest {
 		StepVerifier.create(
 				fluxOfGroupedFluxes.map(gf -> gf.key())
 		)
-//				.expectNext("o")// the first element gets swollowed, and I don't know how to fix that.
+				.expectNext("o")// the first element gets swallowed, and I don't know how to fix that.
 				.expectNext("t", "b", "t")
 				.verifyComplete();
 	}
 
 	private static <T, X> Flux<GroupedFlux<X, T>> groupOnSwitch(Flux<T> source, Function<T, X> keyFunction) {
 
-		//Flux<T> doubledFirst = source.compose(s -> source.take(1).flatMap(v -> Flux.just(v, v)).concatWith(source));
 		Flux<GroupedFlux<X, T>> value = source
-				.buffer(2, 1)
-				.filter(l -> l.size() == 2)
-				.map(l -> Tuples.of(
-						!keyFunction.apply(l.get(1)).equals(keyFunction.apply(l.get(0))),
-						l.get(1)
-				))
-				.windowUntil(tup -> tup.getT1())
+				.startWith((T) Long.valueOf(0L)) // add a dummy value, which will fly out again later in the processing
+				.buffer(2, 1) // build lists with prevElemt + currentElement
+				.filter(l -> l.size() == 2) // last list only has prevElement. We don't want that
+				.map(l -> {
+					boolean newGroup = isNewGroup(keyFunction, l);
+					return Tuples.of(
+							newGroup,
+							l.get(1)
+					);
+				})
+				.windowUntil(tup -> tup.getT1(), true)
 				.flatMap(gf -> gf.map(tup -> tup.getT2()).groupBy(t -> keyFunction.apply(t)));
 
 		return value;
+	}
+
+	private static <T, X> boolean isNewGroup(Function<T, X> keyFunction, List<T> l) {
+		try {
+			return !keyFunction.apply(l.get(1)).equals(keyFunction.apply(l.get(0)));
+		} catch (ClassCastException cce) {
+			return true;
+		}
 	}
 }
