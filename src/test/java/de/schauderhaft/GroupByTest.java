@@ -23,6 +23,7 @@ import org.junit.Test;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
+import reactor.test.StepVerifier;
 
 /**
  * @author Jens Schauder
@@ -30,7 +31,7 @@ import reactor.core.publisher.GroupedFlux;
 public class GroupByTest {
 
 	@Test
-	public void test() {
+	public void groupByDemo() {
 		Flux<Long> longs = Flux
 				.<Long>generate(s -> s.next(System.currentTimeMillis()))
 				.delayElements(Duration.ofMillis(5))
@@ -45,7 +46,13 @@ public class GroupByTest {
 
 
 	@Test
-	public void groupOnSwitch() {
+	public void windowWhile() {
+
+	}
+
+
+	@Test
+	public void groupOnSwitchDemo() {
 		Flux<Long> longs = Flux
 				.<Long>generate(s -> s.next(System.currentTimeMillis()))
 				.delayElements(Duration.ofMillis(10))
@@ -57,23 +64,51 @@ public class GroupByTest {
 				.blockLast();
 	}
 
-	private static Flux<GroupedFlux<Long, Long>> groupOnSwitch(Flux<Long> longs, Function<Long, Long> keyFunction) {
-		ChangeTrigger changeTrigger = new ChangeTrigger(0);
-		return longs.windowUntil(l -> changeTrigger.test(keyFunction.apply(l)));
+	@Test
+	public void groupOnSwitch() {
+		StepVerifier
+				.create(
+						groupOnSwitch(
+								Flux.just("one", "two", "twenty", "tissue", "berta", "blot", "thousand"),
+								s -> s.substring(0, 1))
+								.flatMap(Flux::materialize)
+								.map(s -> s.isOnComplete() ? "WINDOW CLOSED" : s.get())
+				)
+				.expectNext("one", "WINDOW CLOSED")
+				.expectNext("two", "twenty", "tissue", "WINDOW CLOSED")
+				.expectNext("berta", "blot", "WINDOW CLOSED")
+				.expectNext("thousand", "WINDOW CLOSED")
+				.verifyComplete();
+	}
+
+	@Test
+	public void groupOnSwitchKeys() {
+
+		Flux<GroupedFlux<String, String>> fluxOfGroupedFluxes = groupOnSwitch(
+				Flux.just("one", "two", "twenty", "tissue", "berta", "blot", "thousand"),
+				s -> s.substring(0, 1));
+		StepVerifier.create(
+				fluxOfGroupedFluxes.map(gf -> gf.key())
+		)
+				.expectNext("o", "t", "b", "t")
+				.verifyComplete();
+	}
+
+	private static <T, X> Flux<GroupedFlux<X, T>> groupOnSwitch(Flux<T> flux, Function<T, X> keyFunction) {
+		ChangeTrigger changeTrigger = new ChangeTrigger();
+		Flux<GroupedFlux<T, T>> fluxOfGroupedFluxes = flux.windowUntil(l -> changeTrigger.test(keyFunction.apply(l)), true);
+		return fluxOfGroupedFluxes.flatMap(gf -> gf.groupBy(t -> keyFunction.apply(gf.key())));
 	}
 
 	private static class ChangeTrigger<T> {
 
 		T last = null;
 
-		ChangeTrigger(T initialValue) {
-			last =initialValue;
-		}
-
 		boolean test(T value) {
-			boolean result = !Objects.equals(last, value);
+			boolean startNew = !Objects.equals(last, value);
 			last = value;
-			return result;
+			System.out.println(String.format("%s, %s", value, startNew));
+			return startNew;
 		}
 	}
 }
