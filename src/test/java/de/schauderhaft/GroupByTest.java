@@ -16,7 +16,6 @@
 package de.schauderhaft;
 
 import java.time.Duration;
-import java.util.Objects;
 import java.util.function.Function;
 
 import org.junit.Test;
@@ -24,6 +23,8 @@ import org.junit.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
 import reactor.test.StepVerifier;
+import reactor.util.function.Tuple3;
+import reactor.util.function.Tuples;
 
 /**
  * @author Jens Schauder
@@ -82,6 +83,15 @@ public class GroupByTest {
 	}
 
 	@Test
+	public void rollingBuffer() {
+		Flux<Integer> source = Flux.just(1, 2, 3, 4, 5, 6, 7, 8, 9);
+		Flux<Integer> doubledFirst = source.compose(s -> source.take(1).concatWith(source));
+
+		doubledFirst.buffer(2, 1).doOnNext(System.out::println).blockLast();
+	}
+
+
+	@Test
 	public void groupOnSwitchKeys() {
 
 		Flux<GroupedFlux<String, String>> fluxOfGroupedFluxes = groupOnSwitch(
@@ -94,21 +104,19 @@ public class GroupByTest {
 				.verifyComplete();
 	}
 
-	private static <T, X> Flux<GroupedFlux<X, T>> groupOnSwitch(Flux<T> flux, Function<T, X> keyFunction) {
-		ChangeTrigger changeTrigger = new ChangeTrigger();
-		Flux<GroupedFlux<T, T>> fluxOfGroupedFluxes = flux.windowUntil(l -> changeTrigger.test(keyFunction.apply(l)), true);
-		return fluxOfGroupedFluxes.flatMap(gf -> gf.groupBy(t -> keyFunction.apply(gf.key())));
-	}
+	private static <T, X> Flux<GroupedFlux<X, T>> groupOnSwitch(Flux<T> source, Function<T, X> keyFunction) {
 
-	private static class ChangeTrigger<T> {
-
-		T last = null;
-
-		boolean test(T value) {
-			boolean startNew = !Objects.equals(last, value);
-			last = value;
-			System.out.println(String.format("%s, %s", value, startNew));
-			return startNew;
-		}
+		//Flux<T> doubledFirst = source.compose(s -> source.take(1).flatMap(v -> Flux.just(v, v)).concatWith(source));
+		Flux<GroupedFlux<X, Tuple3<Boolean, X, T>>> value = source
+				.buffer(2, 1)
+				.filter(l -> l.size() == 2)
+				.map(l -> Tuples.of(
+						!keyFunction.apply(l.get(1)).equals(keyFunction.apply(l.get(0))),
+						keyFunction.apply(l.get(1)),
+						l.get(1)
+				))
+				.windowUntil(t -> t.getT1())
+				.flatMap(gf -> gf.groupBy(t -> gf.key().getT2()));
+		return null;
 	}
 }
