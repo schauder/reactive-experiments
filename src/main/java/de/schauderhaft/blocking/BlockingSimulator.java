@@ -41,7 +41,9 @@ import reactor.util.function.Tuples;
  */
 public class BlockingSimulator {
 
-	Scheduler dbScheduler = Schedulers.fromExecutorService(Executors.newSingleThreadExecutor());
+
+	Scheduler dbScheduler = Schedulers.fromExecutorService(Executors.newFixedThreadPool(5));
+	Scheduler mainScheduler = Schedulers.fromExecutorService(Executors.newFixedThreadPool(4));
 	Random random = new Random(0);
 
 
@@ -63,7 +65,7 @@ public class BlockingSimulator {
 			Flux<Request> events = generateEvents(configuration);
 
 			Flux<Result> results = processRequests(events);
-
+			results.publishOn(mainScheduler);
 			Flux<GroupedFlux<Result, Result>> groupedByTimeSlot = groupOnSwitch(
 					results,
 					r -> r.timeSlot()).filter(gf -> gf.key() != null);
@@ -90,12 +92,14 @@ public class BlockingSimulator {
 								r -> r.getType() == DB
 										? simpleDbCall(r)
 										: simpleComputation(r))
+						.doOnNext(result -> System.out.println(Thread.currentThread().getName() + " " + result.getRequest().getType()))
 						.filter(Result::isLast);
 	}
 
 	private Flux<Request> generateEvents(Configuration configuration) {
 		return Flux.<Integer>generate(s -> s.next(random.nextInt()))
 						.take(Duration.ofSeconds(configuration.durationInSeconds))
+						.publishOn(mainScheduler)
 						.map(id -> new Request(id, type(id, configuration.percentageDbCalls)));
 	}
 
@@ -108,22 +112,24 @@ public class BlockingSimulator {
 	 */
 	private Publisher<Result> simpleDbCall(Request r) {
 		Random random = new Random(r.getId());//make the behavior reproducable
-		int delay = (int) (random.nextGaussian() * 50.0 + 300);
-		return Mono.just("").subscribeOn(dbScheduler).map(s -> {
-			try{
-				System.out.println(String.format(" sleeping for %d on %s", delay, Thread.currentThread().getName()));
-				Thread.sleep(delay);
-				System.out.println("done");
-			} catch (Exception e) {}
-			return Result.finalResult(r, String.format("dbResult<%s>", r.id));
+		return Mono.just("").publishOn(dbScheduler).map(s -> {
+			sleep();
+			return Result.finalResult(r, String.format("db result<%s>", r.id));
 		});
+	}
+
+	private void sleep() {
+		try{
+			int delay = (int) (random.nextGaussian() * 50.0 + 300);
+			Thread.sleep(delay);
+		} catch (Exception e) {}
 	}
 
 	private Flux<Result> simpleComputation(Request r) {
 
 		return PrimeFactors
 				.factors(r.id)
-				.map(f -> new Result(r, String.format("result<%s>", f)))
+				.map(f -> new Result(r, String.format("non db result<%s>", f)))
 				.concatWith(Mono.just(Result.finalResult(r)));
 	}
 

@@ -19,12 +19,12 @@ import java.time.Duration;
 import java.util.function.Function;
 
 import org.junit.Test;
-import org.reactivestreams.Publisher;
 
 import de.schauderhaft.PrimeFactors;
 import lombok.Data;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 
 /**
@@ -34,15 +34,16 @@ public class AsyncTest {
 
 	private Function<Object, String> threadName = i -> i + " " + Thread.currentThread().getName();
 	private String currentThread = Thread.currentThread().getName();
+
 	@Test
 	public void runOnAdifferentScheduler() {
 
 		Flux.just(1, 2, 3, 4, 5).subscribeOn(Schedulers.newSingle("whatever"))
-				.map(new ControledComputation<>(
+				.map(new ControlledComputation<>(
 						i -> i * 2,
 						"whatever"
 				))
-				.map(new ControledComputation<>(
+				.map(new ControlledComputation<>(
 						i -> i * i,
 						"whatever"
 				))
@@ -55,17 +56,17 @@ public class AsyncTest {
 	public void publishOn() {
 
 		Flux.just(1, 2, 3, 4, 5)
-				.map(new ControledComputation<>(
+				.map(new ControlledComputation<>(
 						i -> i * 2,
 						currentThread
 				))
 				.publishOn(Schedulers.newSingle("whatever"))
-				.map(new ControledComputation<>(
+				.map(new ControlledComputation<>(
 						i -> i * i,
 						"whatever"
 				))
 				.publishOn(Schedulers.newSingle("second"))
-				.map(new ControledComputation<>(
+				.map(new ControlledComputation<>(
 						i -> i - 10,
 						"second"
 				))
@@ -80,11 +81,11 @@ public class AsyncTest {
 		Flux.just(1, 2, 3, 4, 5)
 				.flatMap(i -> PrimeFactors.factors(i)
 						.subscribeOn(Schedulers.newSingle("other"))
-						.map(new ControledComputation<>(
+						.map(new ControlledComputation<>(
 								j -> j + 3,
 								"other"))
 
-				).map(new ControledComputation<>(
+				).map(new ControlledComputation<>(
 				j -> j * 8,
 				"other"
 		)).blockLast(Duration.ofSeconds(5));
@@ -96,11 +97,11 @@ public class AsyncTest {
 		Flux.just(1, 2, 3, 4, 5)
 				.flatMap(i -> PrimeFactors.factors(i)
 						.publishOn(Schedulers.newSingle("other"))
-						.map(new ControledComputation<>(
+						.map(new ControlledComputation<>(
 								j -> j + 3,
 								"other"))
 
-				).publishOn(Schedulers.newSingle("yet other")).map(new ControledComputation<>(
+				).publishOn(Schedulers.newSingle("yet other")).map(new ControlledComputation<>(
 				j -> j * 8,
 				"yet other"
 		)).blockLast(Duration.ofSeconds(5));
@@ -108,14 +109,13 @@ public class AsyncTest {
 
 
 	@Test
-	public void mixedThreads(){
+	public void mixedThreads() {
 		Flux<Integer> ints = Flux.range(1, 100);
 
 		ints.flatMap(i -> i % 2 == 0 ? fromThread("one") : fromThread("two"))
 				.map(threadName)
 				.doOnNext(System.out::println)
 				.blockLast(Duration.ofSeconds(5));
-
 	}
 
 	private Mono<String> fromThread(String name) {
@@ -128,7 +128,7 @@ public class AsyncTest {
 
 		ints
 				.flatMap(i -> PrimeFactors.factors(i)
-						.map(new ControledComputation<>(
+						.map(new ControlledComputation<>(
 								j -> j + 3,
 								currentThread))
 				).blockLast(Duration.ofSeconds(5));
@@ -175,12 +175,12 @@ public class AsyncTest {
 	public void thereAndBackAgain() {
 
 		Flux.just(1, 2, 3, 4, 5)
-				.map(new ControledComputation<>(
+				.map(new ControlledComputation<>(
 						i -> i * 2,
 						"other"
 				))
 				.subscribeOn(Schedulers.newSingle("other"))
-				.map(new ControledComputation<>(
+				.map(new ControlledComputation<>(
 						i -> i * i,
 						"other" // still ???
 				))
@@ -189,9 +189,27 @@ public class AsyncTest {
 		;
 	}
 
+	@Test
+	public void partialFlatMap() {
+		Scheduler ten = Schedulers.newSingle("ten");
+		Flux.range(1, 1000)
+				.map(i -> i% 10)
+				.flatMap(
+						i -> {
+							return i % 2 == 0
+									? Flux.just(1, 2, 3, 4, 5)
+									.publishOn(ten)
+									.map(j -> i + 10 * j)
+									: Flux.just(1, 2, 3, 4, 5).map(j -> i + 1000 * j);
+						}
+
+				).map(threadName)
+				.doOnNext(System.out::println).blockLast(Duration.ofSeconds(5));
+	}
+
 
 	@Data
-	static class ControledComputation<T, R> implements Function<T, R> {
+	static class ControlledComputation<T, R> implements Function<T, R> {
 
 		final Function<T, R> delegate;
 		final String expectedThreadNamePrefix;
