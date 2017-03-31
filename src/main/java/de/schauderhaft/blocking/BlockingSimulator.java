@@ -15,15 +15,14 @@
  */
 package de.schauderhaft.blocking;
 
+import java.io.IOException;
 import java.util.Random;
 import java.util.concurrent.Executors;
 
 import javafx.application.Application;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
@@ -44,26 +43,17 @@ public class BlockingSimulator extends Application {
 	}
 
 	@Override
-	public void start(Stage primaryStage) {
-		primaryStage.setTitle("Experimenting with blocking calls!");
-		Button btn = new Button();
-		btn.setText("Run Experiment");
-		btn.setOnAction(new EventHandler<ActionEvent>() {
+	public void start(Stage stage) {
+		try {
+			Parent root = FXMLLoader.load(getClass().getClassLoader().getResource("simulator.fxml"));
 
-			@Override
-			public void handle(ActionEvent event) {
-				new Experiment(new Configuration() {
-					{
-						durationInSeconds = 10;
-						percentageDbCalls = 2;
-					}
-				}).run();
-			}
-		});
+			Scene scene = new Scene(root, 300, 275);
 
-		StackPane root = new StackPane();
-		root.getChildren().add(btn);
-		primaryStage.setScene(new Scene(root, 300, 250));
-		primaryStage.show();
+			stage.setTitle("FXML Welcome");
+			stage.setScene(scene);
+			stage.show();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }
