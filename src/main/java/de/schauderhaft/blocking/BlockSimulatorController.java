@@ -51,24 +51,18 @@ public class BlockSimulatorController implements Initializable {
 
 	@FXML
 	protected void handleStopButtonAction(ActionEvent event) {
+		stop();
+	}
+
+	private void stop() {
 		if (experiment != null) experiment.dispose();
 	}
 
 	@FXML
 	protected void handleStartButtonAction(ActionEvent event) {
+		stop();
 
-		Series<Long, Long> dbCalls = new Series<>();
-		dbCalls.setName("# Requests (DB)");
-
-		Series<Long, Long> compCalls = new Series<>();
-		compCalls.setName("# Requests (Comp)");
-
-		chart.getData().add(dbCalls);
-		chart.getData().add(compCalls);
-
-		Map<Type, List<Data<Long, Long>>> countsByType = new HashMap<>();
-		countsByType.put(Type.DB, dbCalls.getData());
-		countsByType.put(Type.COMPUTATIONAL, compCalls.getData());
+		Map<Type, List<Data<Long, Long>>> countsByType = createSeries();
 
 		final Long[] offset = {null};
 		experiment = new Experiment(new Configuration() {
@@ -86,6 +80,22 @@ public class BlockSimulatorController implements Initializable {
 				countsByType.get(t.getT2()).add(new Data<>(t.getT1() - offset[0], t.getT3()));
 			});
 		});
+	}
+
+	private Map<Type, List<Data<Long, Long>>> createSeries() {
+		Series<Long, Long> dbCalls = new Series<>();
+		dbCalls.setName("# Requests (DB)");
+
+		Series<Long, Long> compCalls = new Series<>();
+		compCalls.setName("# Requests (Comp)");
+
+		chart.getData().add(dbCalls);
+		chart.getData().add(compCalls);
+
+		Map<Type, List<Data<Long, Long>>> countsByType = new HashMap<>();
+		countsByType.put(Type.DB, dbCalls.getData());
+		countsByType.put(Type.COMPUTATIONAL, compCalls.getData());
+		return countsByType;
 	}
 
 	@Override
