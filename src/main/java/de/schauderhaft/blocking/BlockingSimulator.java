@@ -32,12 +32,6 @@ import reactor.core.scheduler.Schedulers;
  */
 public class BlockingSimulator extends Application {
 
-
-	Scheduler dbScheduler = Schedulers.fromExecutorService(Executors.newFixedThreadPool(5));
-	Scheduler mainScheduler = Schedulers.fromExecutorService(Executors.newFixedThreadPool(4));
-	Random random = new Random(0);
-
-
 	public static void main(String[] args) {
 		launch(args);
 	}
@@ -52,6 +46,7 @@ public class BlockingSimulator extends Application {
 			stage.setTitle("FXML Welcome");
 			stage.setScene(scene);
 			stage.show();
+
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

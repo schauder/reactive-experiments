@@ -19,10 +19,11 @@ import java.time.Duration;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.chart.Axis;
 import javafx.scene.chart.LineChart;
-import javafx.scene.control.CheckBox;
+import javafx.scene.chart.XYChart.Data;
+import javafx.scene.chart.XYChart.Series;
 import javafx.scene.control.TextField;
-import javafx.scene.text.Text;
 
 /**
  * @author Jens Schauder
@@ -37,7 +38,7 @@ public class BlockSimulatorController {
 
 	@FXML private TextField numberOfDbThreads;
 
-	@FXML private LineChart<Duration, Integer> chart;
+	@FXML private LineChart<Integer, Integer> chart;
 
 	@FXML
 	protected void handleStopButtonAction(ActionEvent event) {
@@ -48,5 +49,22 @@ public class BlockSimulatorController {
 	protected void handleStartButtonAction(ActionEvent event) {
 		System.out.println("Start");
 		System.out.println(duration.getText());
+
+		Series<Integer, Integer> dbCalls = new Series<>();
+
+		Series<Integer, Integer> compCalls = new Series<>();
+		compCalls.setName("Avg Duration (DB)");
+
+		compCalls.getData().add(new Data<>(10, 80));
+		compCalls.getData().add(new Data<>(20, 75));
+		compCalls.getData().add(new Data<>(30, 66 ));
+		compCalls.getData().add(new Data<>(40, 58));
+		compCalls.getData().add(new Data<>(50, 51));
+		compCalls.getData().add(new Data<>(60, 40));
+		compCalls.getData().add(new Data<>(70, 38));
+		compCalls.getData().add(new Data<>(80, 35));
+
+//		chart.getData().add(dbCalls);
+		chart.getData().add(compCalls);
 	}
 }
