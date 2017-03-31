@@ -33,6 +33,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
+import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 /**
@@ -59,31 +60,43 @@ public class BlockingSimulator {
 	private void runExperiment(Configuration configuration) {
 		dbScheduler.start();
 		try {
-			Flux<Request> events = Flux.<Integer>generate(s -> s.next(random.nextInt()))
-					.take(Duration.ofSeconds(configuration.durationInSeconds))
-					.map(id -> new Request(id, type(id, configuration.percentageDbCalls)));
+			Flux<Request> events = generateEvents(configuration);
 
-			Flux<Result> results = events
-					.flatMap(
-							r -> r.getType() == DB
-									? simpleDbCall(r)
-									: simpleComputation(r))
-					.filter(Result::isLast);
+			Flux<Result> results = processRequests(events);
 
 			Flux<GroupedFlux<Result, Result>> groupedByTimeSlot = groupOnSwitch(
 					results,
 					r -> r.timeSlot()).filter(gf -> gf.key() != null);
 
-			Flux<GroupedFlux<Tuple2<Long, Type>, Result>> groupedByTimeSlotAndType = groupedByTimeSlot
-					.flatMap(gf -> gf.groupBy(r -> Tuples.of(gf.key().timeSlot(), r.getRequest().getType())));
-
-			groupedByTimeSlotAndType
-					.flatMap(gf -> gf.count().map(c -> Tuples.of(gf.key().getT1(), gf.key().getT2(), c)))
+			gatherStats(groupedByTimeSlot)
 					.doOnNext(System.out::println)
 					.blockLast(Duration.ofSeconds(11));
 		} finally {
 			dbScheduler.dispose();
 		}
+	}
+
+	private Flux<Tuple3<Long, Type, Long>> gatherStats(Flux<GroupedFlux<Result, Result>> groupedByTimeSlot) {
+		Flux<GroupedFlux<Tuple2<Long, Type>, Result>> groupedByTimeSlotAndType = groupedByTimeSlot
+				.flatMap(gf -> gf.groupBy(r -> Tuples.of(gf.key().timeSlot(), r.getRequest().getType())));
+
+		return groupedByTimeSlotAndType
+				.flatMap(gf -> gf.count().map(c -> Tuples.of(gf.key().getT1(), gf.key().getT2(), c)));
+	}
+
+	private Flux<Result> processRequests(Flux<Request> events) {
+		return (Flux<Result>) events
+						.flatMap(
+								r -> r.getType() == DB
+										? simpleDbCall(r)
+										: simpleComputation(r))
+						.filter(Result::isLast);
+	}
+
+	private Flux<Request> generateEvents(Configuration configuration) {
+		return Flux.<Integer>generate(s -> s.next(random.nextInt()))
+						.take(Duration.ofSeconds(configuration.durationInSeconds))
+						.map(id -> new Request(id, type(id, configuration.percentageDbCalls)));
 	}
 
 	private Type type(Integer id, int percentageDbCalls) {
