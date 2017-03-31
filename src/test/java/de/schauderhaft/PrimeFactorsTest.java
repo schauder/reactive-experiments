@@ -26,13 +26,13 @@ public class PrimeFactorsTest {
 	@Test
 	public void primes() {
 
-		assertEquals(asList(1), factors(1));
-		assertEquals(asList(2), factors(2));
-		assertEquals(asList(3), factors(3));
-		assertEquals(asList(2, 2), factors(4));
-		assertEquals(asList(5), factors(5));
-		assertEquals(asList(3, 5), factors(15));
-		assertEquals(asList(23), factors(23));
-		assertEquals(asList(2, 2, 2, 3), factors(24));
+		assertEquals(asList(), factors(1).collectList().block());
+		assertEquals(asList(2), factors(2).collectList().block());
+		assertEquals(asList(3), factors(3).collectList().block());
+		assertEquals(asList(2, 2), factors(4).collectList().block());
+		assertEquals(asList(5), factors(5).collectList().block());
+		assertEquals(asList(3, 5), factors(15).collectList().block());
+		assertEquals(asList(23), factors(23).collectList().block());
+		assertEquals(asList(2, 2, 2, 3), factors(24).collectList().block());
 	}
 }
