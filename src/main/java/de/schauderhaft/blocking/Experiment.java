@@ -21,19 +21,14 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.Executors;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.reactivestreams.Publisher;
 
 import de.schauderhaft.PrimeFactors;
 import de.schauderhaft.blocking.Request.Type;
-import javafx.application.Application;
-import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
-import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.layout.StackPane;
-import javafx.stage.Stage;
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.GroupedFlux;
 import reactor.core.publisher.Mono;
@@ -49,32 +44,31 @@ import reactor.util.function.Tuples;
 public class Experiment {
 
 
-	Scheduler dbScheduler = Schedulers.fromExecutorService(Executors.newFixedThreadPool(5));
-	Scheduler mainScheduler = Schedulers.fromExecutorService(Executors.newFixedThreadPool(4));
-	Random random = new Random(0);
+	private final Flux<Tuple3<Long, Type, Long>> stream;
+
+	private final Scheduler dbScheduler = Schedulers.fromExecutorService(Executors.newFixedThreadPool(5));
+	private final Scheduler mainScheduler = Schedulers.fromExecutorService(Executors.newFixedThreadPool(4));
+	private final Random random = new Random(0);
+	private Disposable theRun;
 
 
 	Experiment(Configuration configuration) {
-		dbScheduler.start();
-		try {
-			Flux<Request> events = generateEvents(configuration);
+		Flux<Request> events = generateEvents(configuration);
 
-			Flux<Result> results = processRequests(events);
-			results.publishOn(mainScheduler);
-			Flux<GroupedFlux<Result, Result>> groupedByTimeSlot = groupOnSwitch(
-					results,
-					r -> r.timeSlot()).filter(gf -> gf.key() != null);
+		Flux<Result> results = processRequests(events);
+		results.publishOn(mainScheduler);
+		Flux<GroupedFlux<Result, Result>> groupedByTimeSlot = groupOnSwitch(
+				results,
+				r -> r.timeSlot()).filter(gf -> gf.key() != null);
 
-			gatherStats(groupedByTimeSlot);
-//					.doOnNext(System.out::println)
-//					.blockLast(Duration.ofSeconds(11));
-		} finally {
-			dbScheduler.dispose();
-		}
+		stream = gatherStats(groupedByTimeSlot);
 	}
 
 
-	public void run()	{
+	public void run(Consumer<Tuple3<Long, Type, Long>> consumer) {
+		theRun = stream
+				.skip(2)
+				.subscribe(consumer);
 	}
 
 	private Flux<Tuple3<Long, Type, Long>> gatherStats(Flux<GroupedFlux<Result, Result>> groupedByTimeSlot) {
@@ -91,13 +85,11 @@ public class Experiment {
 						r -> r.getType() == DB
 								? simpleDbCall(r)
 								: simpleComputation(r))
-				.doOnNext(result -> System.out.println(Thread.currentThread().getName() + " " + result.getRequest().getType()))
 				.filter(Result::isLast);
 	}
 
 	private Flux<Request> generateEvents(Configuration configuration) {
 		return Flux.<Integer>generate(s -> s.next(random.nextInt()))
-				.take(Duration.ofSeconds(configuration.durationInSeconds))
 				.publishOn(mainScheduler)
 				.map(id -> new Request(id, type(id, configuration.percentageDbCalls)));
 	}
@@ -137,6 +129,14 @@ public class Experiment {
 	private static <T> Flux<GroupedFlux<T, T>> groupOnSwitch(Flux<T> values, Function<T, ?> keyFunction) {
 		ChangeTrigger changeTrigger = new ChangeTrigger(0);
 		return values.windowUntil(l -> changeTrigger.test(keyFunction.apply(l)));
+	}
+
+	public void dispose() {
+		if (theRun != null){
+			theRun.dispose();
+			dbScheduler.dispose();
+			mainScheduler.dispose();
+		}
 	}
 
 	private static class ChangeTrigger<T> {

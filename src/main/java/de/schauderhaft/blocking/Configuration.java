@@ -19,6 +19,5 @@ package de.schauderhaft.blocking;
  * @author Jens Schauder
  */
 public abstract class Configuration {
-	int durationInSeconds;
 	int percentageDbCalls;
 }

@@ -45,11 +45,11 @@
 
                         <Label alignment="BOTTOM_RIGHT" contentDisplay="RIGHT" text="Duration/[s]:"
                                GridPane.halignment="RIGHT"/>
-                        <TextField fx:id="duration" GridPane.columnIndex="1"/>
+                        <TextField fx:id="duration" GridPane.columnIndex="1" />
 
                         <Label alignment="BOTTOM_RIGHT" contentDisplay="RIGHT" text="percentage DB Requests:"
                                GridPane.halignment="RIGHT" GridPane.rowIndex="1"/>
-                        <TextField fx:id="percentageDbRequests" GridPane.columnIndex="1" GridPane.rowIndex="1"/>
+                        <TextField fx:id="percentageDbRequests" GridPane.columnIndex="1" GridPane.rowIndex="1" />
 
                         <Label alignment="BOTTOM_RIGHT" contentDisplay="RIGHT" text="# Main Threads:"
                                GridPane.halignment="RIGHT" GridPane.rowIndex="2"/>

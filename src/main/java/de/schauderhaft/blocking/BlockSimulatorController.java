@@ -15,20 +15,27 @@
  */
 package de.schauderhaft.blocking;
 
-import java.time.Duration;
+import java.net.URL;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.ResourceBundle;
 
+import de.schauderhaft.blocking.Request.Type;
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.chart.Axis;
+import javafx.fxml.Initializable;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart.Data;
 import javafx.scene.chart.XYChart.Series;
 import javafx.scene.control.TextField;
+import reactor.core.Disposable;
 
 /**
  * @author Jens Schauder
  */
-public class BlockSimulatorController {
+public class BlockSimulatorController implements Initializable {
 
 	@FXML private TextField duration;
 
@@ -38,33 +45,52 @@ public class BlockSimulatorController {
 
 	@FXML private TextField numberOfDbThreads;
 
-	@FXML private LineChart<Integer, Integer> chart;
+	@FXML private LineChart<Long, Long> chart;
+
+	private Experiment experiment;
 
 	@FXML
 	protected void handleStopButtonAction(ActionEvent event) {
-		System.out.println("Stop");
+		if (experiment != null) experiment.dispose();
 	}
 
 	@FXML
 	protected void handleStartButtonAction(ActionEvent event) {
-		System.out.println("Start");
-		System.out.println(duration.getText());
 
-		Series<Integer, Integer> dbCalls = new Series<>();
+		Series<Long, Long> dbCalls = new Series<>();
+		dbCalls.setName("# Requests (DB)");
 
-		Series<Integer, Integer> compCalls = new Series<>();
-		compCalls.setName("Avg Duration (DB)");
+		Series<Long, Long> compCalls = new Series<>();
+		compCalls.setName("# Requests (Comp)");
 
-		compCalls.getData().add(new Data<>(10, 80));
-		compCalls.getData().add(new Data<>(20, 75));
-		compCalls.getData().add(new Data<>(30, 66 ));
-		compCalls.getData().add(new Data<>(40, 58));
-		compCalls.getData().add(new Data<>(50, 51));
-		compCalls.getData().add(new Data<>(60, 40));
-		compCalls.getData().add(new Data<>(70, 38));
-		compCalls.getData().add(new Data<>(80, 35));
-
-//		chart.getData().add(dbCalls);
+		chart.getData().add(dbCalls);
 		chart.getData().add(compCalls);
+
+		Map<Type, List<Data<Long, Long>>> countsByType = new HashMap<>();
+		countsByType.put(Type.DB, dbCalls.getData());
+		countsByType.put(Type.COMPUTATIONAL, compCalls.getData());
+
+		final Long[] offset = {null};
+		experiment = new Experiment(new Configuration() {
+			{
+				percentageDbCalls = Integer.valueOf(percentageDbRequests.getText());
+			}
+		});
+				experiment.run(t -> {
+
+			System.out.println(String.format("%s %s %s", t.getT1(), t.getT2(), t.getT3()));
+			Platform.runLater(() -> {
+				if (offset[0] == null) {
+					offset[0] = t.getT1();
+				}
+				countsByType.get(t.getT2()).add(new Data<>(t.getT1() - offset[0], t.getT3()));
+			});
+		});
+	}
+
+	@Override
+	public void initialize(URL location, ResourceBundle resources) {
+		duration.setText("5");
+		percentageDbRequests.setText("2");
 	}
 }
