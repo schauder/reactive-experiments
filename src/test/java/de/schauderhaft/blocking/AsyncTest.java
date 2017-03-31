@@ -32,14 +32,12 @@ import reactor.core.scheduler.Schedulers;
  */
 public class AsyncTest {
 
-	Function<Object, String> threadName = i -> i + " " + Thread.currentThread().getName();
-
+	private Function<Object, String> threadName = i -> i + " " + Thread.currentThread().getName();
+	private String currentThread = Thread.currentThread().getName();
 	@Test
 	public void runOnAdifferentScheduler() {
-		Flux<Integer> ints = Flux.just(1, 2, 3, 4, 5);
-		String currentThread = Thread.currentThread().getName();
 
-		ints.subscribeOn(Schedulers.newSingle("whatever"))
+		Flux.just(1, 2, 3, 4, 5).subscribeOn(Schedulers.newSingle("whatever"))
 				.map(new ControledComputation<>(
 						i -> i * 2,
 						"whatever"
@@ -55,13 +53,11 @@ public class AsyncTest {
 
 	@Test
 	public void publishOn() {
-		Flux<Integer> ints = Flux.just(1, 2, 3, 4, 5);
-		String currentThread = Thread.currentThread().getName();
 
-		ints
+		Flux.just(1, 2, 3, 4, 5)
 				.map(new ControledComputation<>(
 						i -> i * 2,
-						"main"
+						currentThread
 				))
 				.publishOn(Schedulers.newSingle("whatever"))
 				.map(new ControledComputation<>(
@@ -80,9 +76,8 @@ public class AsyncTest {
 
 	@Test
 	public void withFlatMapAndSuscribeOn() {
-		Flux<Integer> ints = Flux.just(1, 2, 3, 4, 5);
 
-		ints
+		Flux.just(1, 2, 3, 4, 5)
 				.flatMap(i -> PrimeFactors.factors(i)
 						.subscribeOn(Schedulers.newSingle("other"))
 						.map(new ControledComputation<>(
@@ -97,9 +92,8 @@ public class AsyncTest {
 
 	@Test
 	public void flatMapWrappedInPublishOn() {
-		Flux<Integer> ints = Flux.just(1, 2, 3, 4, 5);
 
-		ints
+		Flux.just(1, 2, 3, 4, 5)
 				.flatMap(i -> PrimeFactors.factors(i)
 						.publishOn(Schedulers.newSingle("other"))
 						.map(new ControledComputation<>(
@@ -136,7 +130,7 @@ public class AsyncTest {
 				.flatMap(i -> PrimeFactors.factors(i)
 						.map(new ControledComputation<>(
 								j -> j + 3,
-								"main"))
+								currentThread))
 				).blockLast(Duration.ofSeconds(5));
 	}
 
@@ -179,10 +173,8 @@ public class AsyncTest {
 
 	@Test
 	public void thereAndBackAgain() {
-		Flux<Integer> ints = Flux.just(1, 2, 3, 4, 5);
-		String currentThread = Thread.currentThread().getName();
 
-		ints
+		Flux.just(1, 2, 3, 4, 5)
 				.map(new ControledComputation<>(
 						i -> i * 2,
 						"other"
