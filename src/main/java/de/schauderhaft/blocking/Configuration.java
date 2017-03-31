@@ -15,25 +15,10 @@
  */
 package de.schauderhaft.blocking;
 
-import static de.schauderhaft.blocking.Request.Type.*;
-import static java.lang.Math.abs;
-
-import java.time.LocalDateTime;
-
-import lombok.Data;
-
 /**
  * @author Jens Schauder
  */
-@Data
-class Request {
-
-	final int id;
-	final Type type;
-	private final LocalDateTime start = LocalDateTime.now();
-
-	enum Type {
-		COMPUTATIONAL,
-		DB
-	}
+public abstract class Configuration {
+	int durationInSeconds;
+	int percentageDbCalls;
 }

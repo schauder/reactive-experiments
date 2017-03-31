@@ -116,22 +116,14 @@ public class GroupByTest {
 	}
 
 	private static <T, X> Flux<GroupedFlux<X, T>> groupOnSwitch(Flux<T> source, Function<T, X> keyFunction) {
-
-		Flux<GroupedFlux<X, T>> value = source
+		return source
 				.startWith((T) Long.valueOf(0L)) // add a dummy value, which will fly out again later in the processing
 				.buffer(2, 1) // build lists with prevElemt + currentElement
 				.filter(l -> l.size() == 2) // last list only has prevElement. We don't want that
-				.map(l -> {
-					boolean newGroup = isNewGroup(keyFunction, l);
-					return Tuples.of(
-							newGroup,
-							l.get(1)
-					);
-				})
-				.windowUntil(tup -> tup.getT1(), true)
-				.flatMap(gf -> gf.map(tup -> tup.getT2()).groupBy(t -> keyFunction.apply(t)));
-
-		return value;
+				.windowUntil(l -> isNewGroup(keyFunction, l), true) // group as desired, just the key value is wrong now and we have still List<T> instead of T inside
+				.flatMap(						gf -> gf
+								.map(l -> l.get(1)) // just take the second element of the list. This removes  the artificial startelement again.
+								.groupBy(t -> keyFunction.apply(t)));
 	}
 
 	private static <T, X> boolean isNewGroup(Function<T, X> keyFunction, List<T> l) {

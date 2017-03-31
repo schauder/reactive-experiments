@@ -42,6 +42,8 @@ public class Result {
 
 	Result(Request request, String value, boolean last) {
 
+		System.out.println("result on " + Thread.currentThread().getName());
+
 		this.request = request;
 		this.value = value;
 		this.last = last;
