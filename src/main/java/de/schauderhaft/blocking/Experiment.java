@@ -107,10 +107,15 @@ public class Experiment {
 	 */
 	private Publisher<Result> simpleDbCall(Request r) {
 		Random random = new Random(r.getId());//make the behavior reproducable
-		return Mono.just("").publishOn(dbScheduler).map(s -> {
-			sleep();
-			return Result.finalResult(r, String.format("db result<%s>", r.id));
-		});
+		return Flux.just(r)
+//				.onBackpressureError() // enables load shedding, or maybe not
+				.publishOn(dbScheduler) // run on the db thread
+				.map(req -> {
+					sleep(); // represents waiting for a response from the database
+					return Result.finalResult(r, String.format("db result<%s>", req.id));
+				})
+				.onErrorResumeWith(t -> Mono.just(Result.finalResult(r, String.format("failed db result <%s> ", r.id))))
+				;
 	}
 
 	private void sleep() {
