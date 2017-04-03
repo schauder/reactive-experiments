@@ -121,6 +121,7 @@ public class Experiment {
 
 		return PrimeFactors
 				.factors(r.id)
+				.publishOn(mainScheduler)
 				.map(f -> new Result(r, String.format("non db result<%s>", f)))
 				.concatWith(Mono.just(Result.finalResult(r)));
 	}

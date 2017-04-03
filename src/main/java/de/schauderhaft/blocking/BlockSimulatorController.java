@@ -30,7 +30,6 @@ import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart.Data;
 import javafx.scene.chart.XYChart.Series;
 import javafx.scene.control.TextField;
-import reactor.core.Disposable;
 
 /**
  * @author Jens Schauder
@@ -70,7 +69,7 @@ public class BlockSimulatorController implements Initializable {
 				percentageDbCalls = Integer.valueOf(percentageDbRequests.getText());
 			}
 		});
-				experiment.run(t -> {
+		experiment.run(t -> {
 
 			System.out.println(String.format("%s %s %s", t.getT1(), t.getT2(), t.getT3()));
 			Platform.runLater(() -> {
