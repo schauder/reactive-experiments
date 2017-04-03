@@ -46,8 +46,8 @@ public class Experiment {
 
 	private final Flux<Tuple3<Long, Type, Long>> stream;
 
-	private final Scheduler dbScheduler = Schedulers.fromExecutorService(Executors.newFixedThreadPool(5));
-	private final Scheduler mainScheduler = Schedulers.fromExecutorService(Executors.newFixedThreadPool(4));
+	private final Scheduler dbScheduler = Schedulers.newParallel("db", 5);
+	private final Scheduler mainScheduler = Schedulers.newParallel("main", 4);
 	private final Random random = new Random(0);
 	private Disposable theRun;
 
@@ -67,7 +67,6 @@ public class Experiment {
 
 	public void run(Consumer<Tuple3<Long, Type, Long>> consumer) {
 		theRun = stream
-				.skip(2)
 				.subscribe(consumer);
 	}
 
