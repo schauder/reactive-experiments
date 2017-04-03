@@ -20,4 +20,6 @@ package de.schauderhaft.blocking;
  */
 public abstract class Configuration {
 	int percentageDbCalls;
+	int dbThreads;
+	int mainThreads;
 }

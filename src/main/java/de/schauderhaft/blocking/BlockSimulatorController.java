@@ -36,8 +36,6 @@ import javafx.scene.control.TextField;
  */
 public class BlockSimulatorController implements Initializable {
 
-	@FXML private TextField duration;
-
 	@FXML private TextField percentageDbRequests;
 
 	@FXML private TextField numberOfMainThreads;
@@ -67,6 +65,8 @@ public class BlockSimulatorController implements Initializable {
 		experiment = new Experiment(new Configuration() {
 			{
 				percentageDbCalls = Integer.valueOf(percentageDbRequests.getText());
+				dbThreads = Integer.valueOf(numberOfDbThreads.getText());
+				mainThreads = Integer.valueOf(numberOfMainThreads.getText());
 			}
 		});
 		experiment.run(t -> {
@@ -99,7 +99,8 @@ public class BlockSimulatorController implements Initializable {
 
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
-		duration.setText("5");
 		percentageDbRequests.setText("2");
+		numberOfMainThreads.setText("4");
+		numberOfDbThreads.setText("4");
 	}
 }

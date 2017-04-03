@@ -46,13 +46,16 @@ public class Experiment {
 
 	private final Flux<Tuple3<Long, Type, Long>> stream;
 
-	private final Scheduler dbScheduler = Schedulers.newParallel("db", 5);
-	private final Scheduler mainScheduler = Schedulers.newParallel("main", 4);
+	private final Scheduler dbScheduler;
+	private final Scheduler mainScheduler;
 	private final Random random = new Random(0);
 	private Disposable theRun;
 
 
 	Experiment(Configuration configuration) {
+		dbScheduler = Schedulers.newParallel("db", configuration.dbThreads);
+		mainScheduler = Schedulers.newParallel("main", configuration.mainThreads);
+
 		Flux<Request> events = generateEvents(configuration);
 
 		Flux<Result> results = processRequests(events);
