@@ -17,10 +17,8 @@ package de.schauderhaft.blocking;
 
 import static de.schauderhaft.blocking.Request.Type.*;
 
-import java.time.Duration;
 import java.util.Objects;
 import java.util.Random;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -53,8 +51,12 @@ public class Experiment {
 
 
 	Experiment(Configuration configuration) {
-		dbScheduler = Schedulers.newParallel("db", configuration.dbThreads);
-		mainScheduler = Schedulers.newParallel("main", configuration.mainThreads);
+		dbScheduler = configuration.dbThreads == 0
+				? Schedulers.immediate()
+				: Schedulers.newParallel("db", configuration.dbThreads);
+		mainScheduler = configuration.mainThreads == 0
+				? Schedulers.newSingle("main")
+				: Schedulers.newParallel("main", configuration.mainThreads);
 
 		Flux<Request> events = generateEvents(configuration);
 
@@ -135,7 +137,7 @@ public class Experiment {
 	}
 
 	public void dispose() {
-		if (theRun != null){
+		if (theRun != null) {
 			theRun.dispose();
 			dbScheduler.dispose();
 			mainScheduler.dispose();
