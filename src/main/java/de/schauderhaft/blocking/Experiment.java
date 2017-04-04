@@ -62,7 +62,11 @@ public class Experiment {
 
 		Flux<Request> events = generateEvents(configuration);
 
-		Flux<Result> results = processRequests(events);
+		Flux<Result> results = processRequests(events)
+				//.filter(r -> r.getRequest().getType() != COMPUTATIONAL)
+				;
+
+
 
 		results.publishOn(mainScheduler);
 		Flux<GroupedFlux<Result, Result>> groupedByTimeSlot = groupOnSwitch(
