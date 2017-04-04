@@ -18,6 +18,7 @@ package de.schauderhaft.blocking;
 import static de.schauderhaft.blocking.Measurement.Type.COUNT;
 import static de.schauderhaft.blocking.Request.Type.*;
 
+import java.time.Duration;
 import java.util.Objects;
 import java.util.Random;
 import java.util.function.Consumer;
@@ -63,7 +64,7 @@ public class Experiment {
 		Flux<Request> events = generateEvents(configuration);
 
 		Flux<Result> results = processRequests(events)
-				//.filter(r -> r.getRequest().getType() != COMPUTATIONAL)
+				.filter(r -> r.getRequest().getType() != COMPUTATIONAL)
 				;
 
 
@@ -113,6 +114,7 @@ public class Experiment {
 
 	private Flux<Request> generateEvents(Configuration configuration) {
 		return Flux.<Integer>generate(s -> s.next(random.nextInt()))
+				.delayElements(Duration.ofMillis(3))
 				.publishOn(mainScheduler)
 				.map(id -> new Request(id, type(id, configuration.percentageDbCalls)));
 	}
