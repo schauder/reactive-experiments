@@ -20,6 +20,7 @@ import java.time.Duration;
 import org.junit.Test;
 
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 /**
@@ -30,9 +31,10 @@ public class WorkSheddingTest {
 	private reactor.core.scheduler.Scheduler other = Schedulers.newParallel("other", 3);
 
 	@Test
-	public void workShedding() {
+	public void publishOnScheduler() {
+		int periodInMillis = 100;
 		long offset = System.currentTimeMillis();
-		Flux<Long> numbers = Flux.interval(Duration.ofMillis(100));
+		Flux<Long> numbers = Flux.interval(Duration.ofMillis(periodInMillis));
 
 		numbers
 				.take(30)
@@ -46,10 +48,39 @@ public class WorkSheddingTest {
 							}
 							return l;
 						})
-				).doOnNext(l -> {
-			long timestamp = System.currentTimeMillis() - offset;
-			System.out.println(timestamp + " " + l + " " + (timestamp - l * 100));
-		})
+				)
+				.doOnNext(l -> {
+					long timestamp = System.currentTimeMillis() - offset;
+					System.out.println(timestamp + " " + l + " " + (timestamp - l * periodInMillis));
+				})
+				.blockLast();
+	}
+
+	@Test
+	public void workShedding() {
+		int periodInMillis = 10;
+		long offset = System.currentTimeMillis();
+		Flux<Long> numbers = Flux.interval(Duration.ofMillis(periodInMillis));
+
+		numbers
+				.take(3000)
+				.onBackpressureError()
+				.flatMap(l -> Flux.just(l)
+						.publishOn(other)
+						.map(i -> {
+							try {
+								Thread.sleep(300);
+							} catch (InterruptedException e) {
+								e.printStackTrace();
+							}
+							return l;
+						})
+				)
+				.onErrorResumeWith(e -> Mono.just(-1L))
+				.doOnNext(l -> {
+					long timestamp = System.currentTimeMillis() - offset;
+					System.out.printf("%d\t%d\t%d%n", timestamp, l, timestamp - l * periodInMillis);
+				})
 				.blockLast();
 	}
 }
