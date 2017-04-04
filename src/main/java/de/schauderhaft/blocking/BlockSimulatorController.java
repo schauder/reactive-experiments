@@ -51,6 +51,12 @@ public class BlockSimulatorController implements Initializable {
 		stop();
 	}
 
+	@FXML
+	protected void handleClearButtonAction(ActionEvent event) {
+
+		chart.getData().clear();
+	}
+
 	private void stop() {
 		if (experiment != null) experiment.dispose();
 	}

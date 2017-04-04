@@ -22,8 +22,6 @@ import java.util.Random;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import org.reactivestreams.Publisher;
-
 import de.schauderhaft.PrimeFactors;
 import de.schauderhaft.blocking.Request.Type;
 import reactor.core.Disposable;
@@ -61,6 +59,7 @@ public class Experiment {
 		Flux<Request> events = generateEvents(configuration);
 
 		Flux<Result> results = processRequests(events);
+
 		results.publishOn(mainScheduler);
 		Flux<GroupedFlux<Result, Result>> groupedByTimeSlot = groupOnSwitch(
 				results,
@@ -85,10 +84,16 @@ public class Experiment {
 
 	private Flux<Result> processRequests(Flux<Request> events) {
 		return (Flux<Result>) events
-				.flatMap(
-						r -> r.getType() == DB
-								? simpleDbCall(r)
-								: simpleComputation(r))
+				.groupBy(Request::getType)
+				.map(gf -> gf.key() == DB
+						? gf
+						.onBackpressureError()
+						.flatMap(r -> simpleDbCall(r))
+								.onErrorResumeWith(t ->
+										Mono.just(Result.finalResult(new Request(-999, DB), String.format("failed db result <%s> ", -999)))
+						)
+						: gf.flatMap(r -> simpleComputation(r)))
+				.flatMap(x -> x)
 				.filter(Result::isLast);
 	}
 
@@ -105,7 +110,7 @@ public class Experiment {
 	/**
 	 * doesn't consume resources, but takes some time, emitting a single result
 	 */
-	private Publisher<Result> simpleDbCall(Request r) {
+	private Flux<Result> simpleDbCall(Request r) {
 		Random random = new Random(r.getId());//make the behavior reproducable
 		return Flux.just(r)
 //				.onBackpressureError() // enables load shedding, or maybe not
@@ -114,7 +119,7 @@ public class Experiment {
 					sleep(); // represents waiting for a response from the database
 					return Result.finalResult(r, String.format("db result<%s>", req.id));
 				})
-				.onErrorResumeWith(t -> Mono.just(Result.finalResult(r, String.format("failed db result <%s> ", r.id))))
+
 				;
 	}
 
