@@ -90,7 +90,7 @@ public class Experiment {
 						.onBackpressureError()
 						.flatMap(r -> simpleDbCall(r))
 								.onErrorResumeWith(t ->
-										Mono.just(Result.finalResult(new Request(-999, DB), String.format("failed db result <%s> ", -999)))
+										Mono.just(Result.finalResult(new Request(-999, DROPPED), String.format("failed db result <%s> ", -999)))
 						)
 						: gf.flatMap(r -> simpleComputation(r)))
 				.flatMap(x -> x)
@@ -113,7 +113,6 @@ public class Experiment {
 	private Flux<Result> simpleDbCall(Request r) {
 		Random random = new Random(r.getId());//make the behavior reproducable
 		return Flux.just(r)
-//				.onBackpressureError() // enables load shedding, or maybe not
 				.publishOn(dbScheduler) // run on the db thread
 				.map(req -> {
 					sleep(); // represents waiting for a response from the database

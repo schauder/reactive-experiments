@@ -88,18 +88,17 @@ public class BlockSimulatorController implements Initializable {
 	}
 
 	private Map<Type, List<Data<Long, Long>>> createSeries() {
-		Series<Long, Long> dbCalls = new Series<>();
-		dbCalls.setName("# Requests (DB)");
-
-		Series<Long, Long> compCalls = new Series<>();
-		compCalls.setName("# Requests (Comp)");
-
-		chart.getData().add(dbCalls);
-		chart.getData().add(compCalls);
 
 		Map<Type, List<Data<Long, Long>>> countsByType = new HashMap<>();
-		countsByType.put(Type.DB, dbCalls.getData());
-		countsByType.put(Type.COMPUTATIONAL, compCalls.getData());
+
+		for (Type type : Type.values()) {
+			Series<Long, Long> callsByType = new Series<>();
+			callsByType.setName(String.format("# Requests (%s)", type));
+			chart.getData().add(callsByType);
+
+			countsByType.put(type, callsByType.getData());
+		}
+
 		return countsByType;
 	}
 

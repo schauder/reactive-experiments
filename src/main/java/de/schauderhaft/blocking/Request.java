@@ -34,6 +34,6 @@ class Request {
 
 	enum Type {
 		COMPUTATIONAL,
-		DB
+		DROPPED, DB
 	}
 }
