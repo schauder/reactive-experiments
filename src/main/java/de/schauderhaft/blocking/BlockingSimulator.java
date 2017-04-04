@@ -41,7 +41,7 @@ public class BlockingSimulator extends Application {
 		try {
 			Parent root = FXMLLoader.load(getClass().getClassLoader().getResource("simulator.fxml"));
 
-			Scene scene = new Scene(root, 300, 275);
+			Scene scene = new Scene(root, 600, 500);
 
 			stage.setTitle("FXML Welcome");
 			stage.setScene(scene);

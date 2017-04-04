@@ -47,7 +47,13 @@ public class GroupByTest {
 
 
 	@Test
-	public void windowWhile() {
+	public void windowUntil() {
+
+		Flux.range(0,10)
+				.windowUntil(x -> x%4 ==0)
+				.map(gf -> gf.materialize().doOnNext(System.out::println))
+				.doOnNext(System.out::println)
+				.blockLast();
 
 	}
 
