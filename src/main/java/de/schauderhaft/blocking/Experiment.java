@@ -15,6 +15,7 @@
  */
 package de.schauderhaft.blocking;
 
+import static de.schauderhaft.blocking.Measurement.Type.COUNT;
 import static de.schauderhaft.blocking.Request.Type.*;
 
 import java.util.Objects;
@@ -40,21 +41,24 @@ import reactor.util.function.Tuples;
 public class Experiment {
 
 
-	private final Flux<Tuple3<Long, Type, Long>> stream;
+	private final Flux<Measurement> stream;
 
 	private final Scheduler dbScheduler;
 	private final Scheduler mainScheduler;
 	private final Random random = new Random(0);
+	private final boolean workShedding;
 	private Disposable theRun;
 
 
 	Experiment(Configuration configuration) {
+
 		dbScheduler = configuration.dbThreads == 0
 				? Schedulers.immediate()
 				: Schedulers.newParallel("db", configuration.dbThreads);
 		mainScheduler = configuration.mainThreads == 0
 				? Schedulers.newSingle("main")
 				: Schedulers.newParallel("main", configuration.mainThreads);
+		workShedding = configuration.shedWork;
 
 		Flux<Request> events = generateEvents(configuration);
 
@@ -69,32 +73,38 @@ public class Experiment {
 	}
 
 
-	public void run(Consumer<Tuple3<Long, Type, Long>> consumer) {
+	public void run(Consumer<Measurement> consumer) {
 		theRun = stream
 				.subscribe(consumer);
 	}
 
-	private Flux<Tuple3<Long, Type, Long>> gatherStats(Flux<GroupedFlux<Result, Result>> groupedByTimeSlot) {
+	private Flux<Measurement> gatherStats(Flux<GroupedFlux<Result, Result>> groupedByTimeSlot) {
 		Flux<GroupedFlux<Tuple2<Long, Type>, Result>> groupedByTimeSlotAndType = groupedByTimeSlot
 				.flatMap(gf -> gf.groupBy(r -> Tuples.of(gf.key().timeSlot(), r.getRequest().getType())));
 
 		return groupedByTimeSlotAndType
-				.flatMap(gf -> gf.count().map(c -> Tuples.of(gf.key().getT1(), gf.key().getT2(), c)));
+				.flatMap(gf -> gf.count().map(c -> new Measurement(gf.key().getT1(), gf.key().getT2(), COUNT, c)));
 	}
 
 	private Flux<Result> processRequests(Flux<Request> events) {
 		return (Flux<Result>) events
 				.groupBy(Request::getType)
 				.map(gf -> gf.key() == DB
-						? gf
-						.onBackpressureError()
+						? configureWorkShedding(gf)
 						.flatMap(r -> simpleDbCall(r))
-								.onErrorResumeWith(t ->
-										Mono.just(Result.finalResult(new Request(-999, DROPPED), String.format("failed db result <%s> ", -999)))
+						.onErrorResumeWith(t ->
+								Mono.just(Result.finalResult(new Request(-999, DROPPED), String.format("failed db result <%s> ", -999)))
 						)
 						: gf.flatMap(r -> simpleComputation(r)))
 				.flatMap(x -> x)
 				.filter(Result::isLast);
+	}
+
+	private Flux<Request> configureWorkShedding(GroupedFlux<Type, Request> gf) {
+		if (workShedding)
+			return gf
+					.onBackpressureError();
+		else return gf;
 	}
 
 	private Flux<Request> generateEvents(Configuration configuration) {
@@ -108,7 +118,7 @@ public class Experiment {
 	}
 
 	/**
-	 * doesn't consume resources, but takes some time, emitting a single result
+	 * doesn't consume CPU resources, but takes some time, emitting a single result
 	 */
 	private Flux<Result> simpleDbCall(Request r) {
 		Random random = new Random(r.getId());//make the behavior reproducable

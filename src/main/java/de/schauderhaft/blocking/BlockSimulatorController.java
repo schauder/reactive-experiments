@@ -29,6 +29,7 @@ import javafx.fxml.Initializable;
 import javafx.scene.chart.LineChart;
 import javafx.scene.chart.XYChart.Data;
 import javafx.scene.chart.XYChart.Series;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.TextField;
 
 /**
@@ -41,6 +42,8 @@ public class BlockSimulatorController implements Initializable {
 	@FXML private TextField numberOfMainThreads;
 
 	@FXML private TextField numberOfDbThreads;
+
+	@FXML private CheckBox workShedding;
 
 	@FXML private LineChart<Long, Long> chart;
 
@@ -73,18 +76,34 @@ public class BlockSimulatorController implements Initializable {
 				percentageDbCalls = Integer.valueOf(percentageDbRequests.getText());
 				dbThreads = Integer.valueOf(numberOfDbThreads.getText());
 				mainThreads = Integer.valueOf(numberOfMainThreads.getText());
+				shedWork = workShedding.isSelected();
 			}
 		});
-		experiment.run(t -> {
+		experiment.run(measurement -> {
 
-			System.out.println(String.format("%s %s %s", t.getT1(), t.getT2(), t.getT3()));
 			Platform.runLater(() -> {
 				if (offset[0] == null) {
-					offset[0] = t.getT1();
+					offset[0] = measurement.getTimestamp();
 				}
-				countsByType.get(t.getT2()).add(new Data<>(t.getT1() - offset[0], t.getT3()));
+
+				addAndReplace(countsByType, offset, measurement);
 			});
 		});
+	}
+
+	private void addAndReplace(Map<Type, List<Data<Long, Long>>> countsByType, Long[] offset, Measurement measurement) {
+		long correctedTimestamp = measurement.getTimestamp() - offset[0];
+		Long oldValue = 0L;
+		List<Data<Long, Long>> series = countsByType.get(measurement.getRequestType());
+		for (Data<Long, Long> data : series) {
+			if (data.getXValue().equals(correctedTimestamp)) {
+				oldValue = data.getYValue();
+				series.remove(data);
+				break;
+			}
+		}
+		Data<Long, Long> newData = new Data<>(correctedTimestamp, measurement.getValue() + oldValue);
+		series.add(newData);
 	}
 
 	private Map<Type, List<Data<Long, Long>>> createSeries() {

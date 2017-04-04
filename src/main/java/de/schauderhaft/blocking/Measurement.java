@@ -15,12 +15,20 @@
  */
 package de.schauderhaft.blocking;
 
+import de.schauderhaft.blocking.Request.Type;
+import lombok.Data;
+
 /**
  * @author Jens Schauder
  */
-public abstract class Configuration {
-	int percentageDbCalls;
-	int dbThreads;
-	int mainThreads;
-	boolean shedWork;
+@Data
+public class Measurement {
+	private final Long timestamp;
+	private final Request.Type requestType;
+	private final Measurement.Type measurementType;
+	private final Long value;
+
+	enum Type {
+		COUNT
+	}
 }
