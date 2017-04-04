@@ -37,10 +37,12 @@ import javafx.scene.control.TextField;
  */
 public class BlockSimulatorController implements Initializable {
 
+	@FXML private TextField delayBetweenEvents;
+	@FXML private TextField dbTaskDuration;
+
 	@FXML private TextField percentageDbRequests;
 
 	@FXML private TextField numberOfMainThreads;
-
 	@FXML private TextField numberOfDbThreads;
 
 	@FXML private CheckBox workShedding;
@@ -79,6 +81,9 @@ public class BlockSimulatorController implements Initializable {
 		final Long[] offset = {null};
 		experiment = new Experiment(new Configuration() {
 			{
+
+				delay = Integer.valueOf(delayBetweenEvents.getText());
+				duration = Integer.valueOf(dbTaskDuration.getText());
 				percentageDbCalls = Integer.valueOf(percentageDbRequests.getText());
 				dbThreads = Integer.valueOf(numberOfDbThreads.getText());
 				mainThreads = Integer.valueOf(numberOfMainThreads.getText());
@@ -129,9 +134,11 @@ public class BlockSimulatorController implements Initializable {
 
 	@Override
 	public void initialize(URL location, ResourceBundle resources) {
-		percentageDbRequests.setText("2");
+		delayBetweenEvents.setText("1");
+		dbTaskDuration.setText("300");
+		percentageDbRequests.setText("20");
 		numberOfMainThreads.setText("4");
-		numberOfDbThreads.setText("4");
+		numberOfDbThreads.setText("1");
 
 		charts.put(Type.COMPUTATIONAL, chartCalc);
 		charts.put(Type.DB, chartDb);

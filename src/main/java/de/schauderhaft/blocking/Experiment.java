@@ -15,7 +15,7 @@
  */
 package de.schauderhaft.blocking;
 
-import static de.schauderhaft.blocking.Measurement.Type.COUNT;
+import static de.schauderhaft.blocking.Measurement.Type.*;
 import static de.schauderhaft.blocking.Request.Type.*;
 
 import java.time.Duration;
@@ -33,7 +33,6 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
-import reactor.util.function.Tuple3;
 import reactor.util.function.Tuples;
 
 /**
@@ -48,6 +47,7 @@ public class Experiment {
 	private final Scheduler mainScheduler;
 	private final Random random = new Random(0);
 	private final boolean workShedding;
+	private final int avgDelay;
 	private Disposable theRun;
 
 
@@ -60,14 +60,11 @@ public class Experiment {
 				? Schedulers.newSingle("main")
 				: Schedulers.newParallel("main", configuration.mainThreads);
 		workShedding = configuration.shedWork;
+		avgDelay = configuration.delay;
 
 		Flux<Request> events = generateEvents(configuration);
 
-		Flux<Result> results = processRequests(events)
-				//.filter(r -> r.getRequest().getType() != COMPUTATIONAL)
-				;
-
-
+		Flux<Result> results = processRequests(events);
 
 		results.publishOn(mainScheduler);
 		Flux<GroupedFlux<Result, Result>> groupedByTimeSlot = groupOnSwitch(
@@ -113,8 +110,9 @@ public class Experiment {
 	}
 
 	private Flux<Request> generateEvents(Configuration configuration) {
-		return Flux.<Integer>generate(s -> s.next(random.nextInt()))
-				.delayElements(Duration.ofMillis(3))
+		return Flux.interval(Duration.ofMillis(configuration.delay))
+				.onBackpressureDrop()
+				.map(i -> random.nextInt())
 				.publishOn(mainScheduler)
 				.map(id -> new Request(id, type(id, configuration.percentageDbCalls)));
 	}
@@ -140,8 +138,8 @@ public class Experiment {
 
 	private void sleep() {
 		try {
-			int delay = (int) (random.nextGaussian() * 50.0 + 300);
-			Thread.sleep(delay);
+			int actualDelay = (int) (random.nextGaussian() * 50.0 + avgDelay);
+			Thread.sleep(actualDelay);
 		} catch (Exception e) {
 		}
 	}

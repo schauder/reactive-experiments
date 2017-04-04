@@ -19,6 +19,8 @@ package de.schauderhaft.blocking;
  * @author Jens Schauder
  */
 public abstract class Configuration {
+	int delay;
+	int duration;
 	int percentageDbCalls;
 	int dbThreads;
 	int mainThreads;

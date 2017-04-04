@@ -43,7 +43,7 @@ public class BlockingSimulator extends Application {
 
 			Scene scene = new Scene(root, 600, 500);
 
-			stage.setTitle("FXML Welcome");
+			stage.setTitle("Effects of Backpressure and Work Shedding");
 			stage.setScene(scene);
 			stage.show();
 
