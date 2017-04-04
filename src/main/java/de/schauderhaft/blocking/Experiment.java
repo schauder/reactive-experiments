@@ -64,7 +64,7 @@ public class Experiment {
 		Flux<Request> events = generateEvents(configuration);
 
 		Flux<Result> results = processRequests(events)
-				.filter(r -> r.getRequest().getType() != COMPUTATIONAL)
+				//.filter(r -> r.getRequest().getType() != COMPUTATIONAL)
 				;
 
 

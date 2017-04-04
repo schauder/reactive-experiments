@@ -45,7 +45,11 @@ public class BlockSimulatorController implements Initializable {
 
 	@FXML private CheckBox workShedding;
 
-	@FXML private LineChart<Long, Long> chart;
+	@FXML private LineChart<Long, Long> chartCalc;
+	@FXML private LineChart<Long, Long> chartDb;
+	@FXML private LineChart<Long, Long> chartDrop;
+
+	private Map<Type, LineChart<Long, Long>> charts = new HashMap<>();
 
 	private Experiment experiment;
 
@@ -56,8 +60,10 @@ public class BlockSimulatorController implements Initializable {
 
 	@FXML
 	protected void handleClearButtonAction(ActionEvent event) {
+		for (LineChart<Long, Long> chart : charts.values()) {
 
-		chart.getData().clear();
+			chart.getData().clear();
+		}
 	}
 
 	private void stop() {
@@ -113,7 +119,7 @@ public class BlockSimulatorController implements Initializable {
 		for (Type type : Type.values()) {
 			Series<Long, Long> callsByType = new Series<>();
 			callsByType.setName(String.format("# Requests (%s)", type));
-			chart.getData().add(callsByType);
+			charts.get(type).getData().add(callsByType);
 
 			countsByType.put(type, callsByType.getData());
 		}
@@ -126,5 +132,9 @@ public class BlockSimulatorController implements Initializable {
 		percentageDbRequests.setText("2");
 		numberOfMainThreads.setText("4");
 		numberOfDbThreads.setText("4");
+
+		charts.put(Type.COMPUTATIONAL, chartCalc);
+		charts.put(Type.DB, chartDb);
+		charts.put(Type.DROPPED, chartDrop);
 	}
 }
