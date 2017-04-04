@@ -28,7 +28,7 @@ import reactor.core.scheduler.Schedulers;
  */
 public class WorkSheddingTest {
 
-	private reactor.core.scheduler.Scheduler other = Schedulers.newParallel("other", 3);
+	private reactor.core.scheduler.Scheduler other = Schedulers.newSingle("other");
 
 	@Test
 	public void publishOnScheduler() {
@@ -76,7 +76,10 @@ public class WorkSheddingTest {
 							return l;
 						})
 				)
-				.onErrorResumeWith(e -> Mono.just(-1L))
+				.onErrorResumeWith(e -> {
+					e.printStackTrace();
+					return Mono.just(-1L);
+				})
 				.doOnNext(l -> {
 					long timestamp = System.currentTimeMillis() - offset;
 					System.out.printf("%d\t%d\t%d%n", timestamp, l, timestamp - l * periodInMillis);
